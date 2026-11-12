@@ -19,7 +19,7 @@ type Props = {
   formId: string;
   items: Item[];
   initialItemId?: string;
-  onSubmit: (values: RequestFormValues) => boolean;
+  onSubmit: (values: RequestFormValues) => boolean | Promise<boolean>;
 };
 
 const ORDER: Array<keyof RequestFormValues> = ["itemId", "quantity", "borrowDate", "dueDate", "purpose"];
@@ -48,7 +48,7 @@ export function RequestForm({ formId, items, initialItemId, onSubmit }: Props) {
     setErrors((e) => ({ ...e, [key]: undefined }));
   };
 
-  const handleSubmit = (e: FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     const result = validateRequest(values, items, today);
     setErrors(result.errors);
@@ -57,7 +57,7 @@ export function RequestForm({ formId, items, initialItemId, onSubmit }: Props) {
       document.getElementById(id(first))?.focus();
       return;
     }
-    onSubmit(values);
+    await onSubmit(values);
   };
 
   const selected = items.find((i) => i.id === values.itemId);
@@ -77,7 +77,7 @@ export function RequestForm({ formId, items, initialItemId, onSubmit }: Props) {
           onChange={(e) => set("itemId", e.target.value)}
         >
           <option value="">Pilih barang…</option>
-          {items.map((i) => (
+          {items.filter((i) => i.isActive !== false).map((i) => (
             <option key={i.id} value={i.id} disabled={getAvailable(i) === 0}>
               {i.name} ({getAvailable(i) === 0 ? "stok habis" : `tersedia ${getAvailable(i)}`})
             </option>

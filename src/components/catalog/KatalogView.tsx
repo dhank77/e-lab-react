@@ -173,8 +173,8 @@ export function KatalogView() {
             formId={FORM_ID}
             items={items}
             initialItemId={dialog.itemId}
-            onSubmit={(values) => {
-              const ok = submitRequest(values);
+            onSubmit={async (values) => {
+              const ok = await submitRequest(values);
               if (ok) setDialog(null);
               return ok;
             }}

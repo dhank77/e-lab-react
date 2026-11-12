@@ -212,9 +212,8 @@ export function PengajuanSayaView() {
           confirmLabel="Ya, Batalkan"
           cancelLabel="Kembali"
           onCancel={() => setCancelling(null)}
-          onConfirm={() => {
-            cancelRequest(cancelling.id);
-            setCancelling(null);
+          onConfirm={async () => {
+            if (await cancelRequest(cancelling.id)) setCancelling(null);
           }}
           message={
             <p>

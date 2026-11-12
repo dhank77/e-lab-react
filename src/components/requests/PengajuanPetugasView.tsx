@@ -175,7 +175,7 @@ export function PengajuanPetugasView() {
                     <div className="mt-4 flex flex-wrap gap-2">
                       {r.status === "Menunggu" && (
                         <>
-                          <Button variant="success" size="sm" icon="check" onClick={() => approveRequest(r.id)}>
+                          <Button variant="success" size="sm" icon="check" onClick={() => void approveRequest(r.id)}>
                             Setujui
                           </Button>
                           <Button variant="dangerOutline" size="sm" icon="x" onClick={() => setRejecting(r)}>
@@ -184,7 +184,7 @@ export function PengajuanPetugasView() {
                         </>
                       )}
                       {r.status === "Disetujui" && (
-                        <Button size="sm" disabled={short} onClick={() => handoverRequest(r.id)}>
+                        <Button size="sm" disabled={short} onClick={() => void handoverRequest(r.id)}>
                           Catat Penyerahan
                         </Button>
                       )}

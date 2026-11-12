@@ -218,8 +218,8 @@ export function DataLabView() {
             formId={FORM_ID}
             items={items}
             categories={categories}
-            onSubmit={(values) => {
-              const ok = addItem(values);
+            onSubmit={async (values) => {
+              const ok = await addItem(values);
               if (ok) setModal(null);
               return ok;
             }}
@@ -248,8 +248,8 @@ export function DataLabView() {
             item={selected}
             items={items}
             categories={categories}
-            onSubmit={(values) => {
-              const ok = updateItem(selected.id, values);
+            onSubmit={async (values) => {
+              const ok = await updateItem(selected.id, values);
               if (ok) setModal(null);
               return ok;
             }}
@@ -275,15 +275,14 @@ export function DataLabView() {
           confirmLabel="Ya, Hapus"
           disabled={selected.borrowed > 0}
           onCancel={() => setModal(null)}
-          onConfirm={() => {
-            if (deleteItem(selected.id)) setModal(null);
+          onConfirm={async () => {
+            if (await deleteItem(selected.id)) setModal(null);
           }}
           message={
             <div className="space-y-3">
               <p>
-                Anda akan menghapus <strong className="text-slate-900">{selected.name}</strong> (
-                {getAvailable(selected)} unit tersedia dari total {selected.total}) dari inventaris.
-                Tindakan ini tidak dapat dibatalkan.
+                Anda akan menghapus/arsipkan <strong className="text-slate-900">{selected.name}</strong> (
+                {getAvailable(selected)} unit tersedia dari total {selected.total}). Barang yang masih memiliki riwayat akan diarsipkan agar riwayat tetap terjaga.
               </p>
               {selected.borrowed > 0 ? (
                 <p className="rounded-lg bg-red-50 p-3 text-red-800">
@@ -292,7 +291,7 @@ export function DataLabView() {
                 </p>
               ) : (
                 <p className="text-slate-600">
-                  Pengajuan yang masih menunggu atau disetujui untuk barang ini akan otomatis ditolak.
+                  Pengajuan yang masih menunggu atau disetujui untuk barang ini akan otomatis ditolak/diarsipkan sesuai aturan.
                 </p>
               )}
             </div>

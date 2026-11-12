@@ -16,19 +16,16 @@ export function RegisterView() {
   const { registerStudent } = useStore();
   const uid = useId();
   const id = (key: keyof RegisterValues) => `${uid}-${key}`;
-  const [values, setValues] = useState<RegisterValues>({
-    name: "",
-    nim: "",
-    password: "",
-    confirmPassword: "",
-  });
+  const [values, setValues] = useState<RegisterValues>({ name: "", nim: "", password: "", confirmPassword: "" });
   const [errors, setErrors] = useState<RegisterErrors>({});
   const [busy, setBusy] = useState(false);
   const [registered, setRegistered] = useState<{ name: string; nim: string } | null>(null);
+  const [formError, setFormError] = useState("");
 
   const set = (key: keyof RegisterValues, value: string) => {
     setValues((v) => ({ ...v, [key]: value }));
     setErrors((e) => ({ ...e, [key]: undefined }));
+    setFormError("");
   };
 
   const submit = async (e: FormEvent) => {
@@ -46,13 +43,13 @@ export function RegisterView() {
     try {
       const result = await registerStudent(values);
       if (result.ok) {
-        setRegistered({ name: result.account.name, nim: result.account.nim });
+        setRegistered({ name: validation.parsed!.name, nim: validation.parsed!.nim });
       } else {
-        if (result.field) {
+        if (result.field && result.field in values) {
           setErrors((current) => ({ ...current, [result.field as keyof RegisterValues]: result.message }));
-          document.getElementById(id(result.field))?.focus();
+          document.getElementById(id(result.field as keyof RegisterValues))?.focus();
         } else {
-          setErrors({ name: result.message });
+          setFormError(result.message);
         }
       }
     } finally {
@@ -70,20 +67,13 @@ export function RegisterView() {
           <h1 className="mt-4 text-2xl font-bold text-slate-900">Akun berhasil dibuat</h1>
           <p className="mt-2 text-sm leading-relaxed text-slate-600">
             Akun untuk <strong className="text-slate-900">{registered.name}</strong> dengan NIM{" "}
-            <strong className="text-slate-900">{registered.nim}</strong> telah terdaftar. Silakan masuk untuk
-            mengajukan peminjaman.
+            <strong className="text-slate-900">{registered.nim}</strong> telah terdaftar. Silakan masuk untuk mengajukan peminjaman.
           </p>
-          <Link
-            href={`/?nim=${encodeURIComponent(registered.nim)}`}
-            className={buttonClass("primary", "md", "mt-6 h-11 w-full")}
-          >
+          <Link href={`/?nim=${encodeURIComponent(registered.nim)}`} className={buttonClass("primary", "md", "mt-6 h-11 w-full")}>
             Masuk dengan NIM ini
             <Icon name="arrowRight" className="size-4" />
           </Link>
-          <Link
-            href="/katalog"
-            className="mt-4 inline-flex items-center gap-1.5 text-sm font-semibold text-blue-700 hover:underline focus-visible:outline-2 focus-visible:outline-blue-600"
-          >
+          <Link href="/katalog" className="mt-4 inline-flex items-center gap-1.5 text-sm font-semibold text-blue-700 hover:underline focus-visible:outline-2 focus-visible:outline-blue-600">
             Lihat katalog sebagai Guest
           </Link>
         </div>
@@ -109,68 +99,22 @@ export function RegisterView() {
 
       <form onSubmit={submit} noValidate className="mt-6 space-y-4">
         <Field id={id("name")} label="Nama lengkap" required error={errors.name}>
-          <input
-            {...fieldProps("name")}
-            type="text"
-            value={values.name}
-            maxLength={50}
-            autoComplete="name"
-            placeholder="Nama sesuai data mahasiswa"
-            onChange={(e) => set("name", e.target.value)}
-            className={cn(inputClass(!!errors.name), "h-11")}
-          />
+          <input {...fieldProps("name")} type="text" value={values.name} autoComplete="name" placeholder="Nama sesuai data mahasiswa" onChange={(e) => set("name", e.target.value)} className={cn(inputClass(!!errors.name), "h-11")} />
         </Field>
 
-        <Field
-          id={id("nim")}
-          label="NIM"
-          required
-          error={errors.nim}
-          hint="Wajib diawali huruf D dan diikuti 1–9 angka. Contoh: D121211001 atau D08."
-        >
-          <input
-            {...fieldProps("nim", "hint")}
-            type="text"
-            value={values.nim}
-            maxLength={10}
-            autoCapitalize="characters"
-            autoComplete="username"
-            spellCheck={false}
-            placeholder="D121211001"
-            onChange={(e) => set("nim", e.target.value.toUpperCase().replace(/\s/g, ""))}
-            className={cn(inputClass(!!errors.nim), "h-11 uppercase")}
-          />
+        <Field id={id("nim")} label="NIM" required error={errors.nim} hint="NIM wajib diisi dan harus berbeda dari NIM yang sudah terdaftar.">
+          <input {...fieldProps("nim", "hint")} type="text" value={values.nim} autoCapitalize="characters" autoComplete="username" spellCheck={false} placeholder="Masukkan NIM sesuai data mahasiswa" onChange={(e) => set("nim", e.target.value.toUpperCase().replace(/\s/g, ""))} className={cn(inputClass(!!errors.nim), "h-11 uppercase")} />
         </Field>
 
-        <Field
-          id={id("password")}
-          label="Kata sandi"
-          required
-          error={errors.password}
-          hint="Minimal 6 karakter."
-        >
-          <input
-            {...fieldProps("password", "hint")}
-            type="password"
-            value={values.password}
-            maxLength={72}
-            autoComplete="new-password"
-            onChange={(e) => set("password", e.target.value)}
-            className={cn(inputClass(!!errors.password), "h-11")}
-          />
+        <Field id={id("password")} label="Kata sandi" required error={errors.password} hint="Minimal 6 karakter.">
+          <input {...fieldProps("password", "hint")} type="password" value={values.password} maxLength={72} autoComplete="new-password" onChange={(e) => set("password", e.target.value)} className={cn(inputClass(!!errors.password), "h-11")} />
         </Field>
 
         <Field id={id("confirmPassword")} label="Ulangi kata sandi" required error={errors.confirmPassword}>
-          <input
-            {...fieldProps("confirmPassword")}
-            type="password"
-            value={values.confirmPassword}
-            maxLength={72}
-            autoComplete="new-password"
-            onChange={(e) => set("confirmPassword", e.target.value)}
-            className={cn(inputClass(!!errors.confirmPassword), "h-11")}
-          />
+          <input {...fieldProps("confirmPassword")} type="password" value={values.confirmPassword} maxLength={72} autoComplete="new-password" onChange={(e) => set("confirmPassword", e.target.value)} className={cn(inputClass(!!errors.confirmPassword), "h-11")} />
         </Field>
+
+        {formError && <p role="alert" className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-800">{formError}</p>}
 
         <Button type="submit" disabled={busy} className="mt-2 h-11 w-full text-[15px]">
           {busy ? "Membuat akun…" : "Buat Akun"}
@@ -180,12 +124,10 @@ export function RegisterView() {
 
       <p className="mt-4 text-center text-sm text-slate-600">
         Sudah punya akun?{" "}
-        <Link href="/" className="font-semibold text-blue-700 hover:underline focus-visible:outline-2 focus-visible:outline-blue-600">
-          Masuk di sini
-        </Link>
+        <Link href="/" className="font-semibold text-blue-700 hover:underline focus-visible:outline-2 focus-visible:outline-blue-600">Masuk di sini</Link>
       </p>
       <p className="mt-5 text-center text-xs leading-relaxed text-slate-500">
-        Akun disimpan secara lokal di peramban ini untuk keperluan prototipe.
+        Pendaftaran mahasiswa menggunakan Supabase Auth; kata sandi tidak disimpan di peramban atau tabel profil. Akun petugas dibuat oleh admin.
       </p>
     </AuthShell>
   );

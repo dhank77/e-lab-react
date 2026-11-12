@@ -122,7 +122,7 @@ type ConfirmProps = {
   cancelLabel?: string;
   tone?: "danger" | "primary";
   disabled?: boolean;
-  onConfirm: () => void;
+  onConfirm: () => void | Promise<void>;
   onCancel: () => void;
 };
 
@@ -154,7 +154,7 @@ export function ConfirmDialog({
           <button
             type="button"
             disabled={disabled}
-            onClick={onConfirm}
+            onClick={() => void onConfirm()}
             className={cn(
               "inline-flex h-10 items-center justify-center rounded-lg px-4 text-sm font-medium text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 disabled:cursor-not-allowed disabled:opacity-50",
               tone === "danger" ? "bg-red-600 hover:bg-red-700" : "bg-blue-600 hover:bg-blue-700",

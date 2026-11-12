@@ -19,7 +19,7 @@ type Props = {
   item?: Item;
   items: Item[];
   categories: string[];
-  onSubmit: (values: ItemFormValues) => boolean;
+  onSubmit: (values: ItemFormValues) => boolean | Promise<boolean>;
 };
 
 const FIELD_ORDER: Array<keyof ItemFormValues> = ["name", "category", "total", "damaged", "description"];
@@ -41,7 +41,7 @@ export function ItemForm({ formId, item, items, categories, onSubmit }: Props) {
     if (errors[key]) setErrors((e) => ({ ...e, [key]: undefined }));
   };
 
-  const handleSubmit = (e: FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     const result = validateItem(values, items, item);
     setErrors(result.errors);
@@ -50,7 +50,7 @@ export function ItemForm({ formId, item, items, categories, onSubmit }: Props) {
       document.getElementById(id(firstInvalid))?.focus();
       return;
     }
-    onSubmit(values);
+    await onSubmit(values);
   };
 
   const borrowed = item?.borrowed ?? 0;

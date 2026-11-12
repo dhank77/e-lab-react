@@ -8,7 +8,7 @@ import { homeFor } from "@/components/layout/nav";
 import { Button } from "@/components/ui/Button";
 import { Field, describedBy, inputClass } from "@/components/ui/Form";
 import { Icon, type IconName } from "@/components/ui/Icon";
-import { normalizeNim } from "@/lib/accounts";
+import { normalizeNim, STAFF_EMAIL } from "@/lib/accounts";
 import { useStore } from "@/lib/store";
 import type { Role } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -23,7 +23,7 @@ const ROLES: Array<{ value: Role; title: string; desc: string; icon: IconName }>
   {
     value: "petugas",
     title: "Petugas Laboratorium",
-    desc: "Kelola barang, pengajuan, dan transaksi.",
+    desc: "Masuk dengan akun petugas (email) yang dikelola admin.",
     icon: "shield",
   },
 ];
@@ -33,7 +33,7 @@ export function LoginView() {
   const router = useRouter();
   const uid = useId();
   const [role, setRole] = useState<Role>("mahasiswa");
-  const [staffName, setStaffName] = useState("Siti Rahmawati");
+  const staffEmail = STAFF_EMAIL;
   const [nim, setNim] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -43,7 +43,6 @@ export function LoginView() {
     if (ready && session) router.replace(homeFor(session.role));
   }, [ready, session, router]);
 
-  // Setelah mendaftar, NIM dibawa kembali ke formulir login melalui query URL.
   useEffect(() => {
     const value = new URLSearchParams(window.location.search).get("nim");
     if (value) {
@@ -58,11 +57,16 @@ export function LoginView() {
     setError("");
 
     if (role === "petugas") {
-      const clean = staffName.trim().replace(/\s+/g, " ");
-      if (clean.length < 2) return setError("Nama petugas minimal 2 karakter.");
-      if (clean.length > 50) return setError("Nama petugas maksimal 50 karakter.");
-      loginPetugas(clean);
-      router.push(homeFor("petugas"));
+      if (!staffEmail.trim()) return setError("Email petugas wajib diisi.");
+      if (!password) return setError("Kata sandi wajib diisi.");
+      setBusy(true);
+      try {
+        const result = await loginPetugas(staffEmail, password);
+        if (result.ok) router.push(homeFor("petugas"));
+        else setError(result.message);
+      } finally {
+        setBusy(false);
+      }
       return;
     }
 
@@ -99,26 +103,16 @@ export function LoginView() {
                   name="role"
                   value={r.value}
                   checked={role === r.value}
-                  onChange={() => {
-                    setRole(r.value);
-                    setError("");
-                  }}
+                  onChange={() => { setRole(r.value); setError(""); }}
                   className="peer sr-only"
                 />
                 <span
                   className={cn(
                     "flex h-full flex-col gap-2 rounded-xl border bg-white p-4 transition-colors peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-blue-600",
-                    role === r.value
-                      ? "border-blue-600 bg-blue-50 ring-1 ring-blue-600"
-                      : "border-slate-300 hover:border-slate-400",
+                    role === r.value ? "border-blue-600 bg-blue-50 ring-1 ring-blue-600" : "border-slate-300 hover:border-slate-400",
                   )}
                 >
-                  <span
-                    className={cn(
-                      "inline-flex size-9 items-center justify-center rounded-lg",
-                      role === r.value ? "bg-blue-600 text-white" : "bg-slate-100 text-slate-600",
-                    )}
-                  >
+                  <span className={cn("inline-flex size-9 items-center justify-center rounded-lg", role === r.value ? "bg-blue-600 text-white" : "bg-slate-100 text-slate-600")}>
                     <Icon name={r.icon} className="size-5" />
                   </span>
                   <span className="text-sm font-semibold text-slate-900">{r.title}</span>
@@ -131,25 +125,16 @@ export function LoginView() {
 
         {role === "mahasiswa" ? (
           <div className="mt-5 space-y-4">
-            <Field
-              id={`${uid}-nim`}
-              label="NIM"
-              required
-              hint="Diawali huruf D, diikuti maksimal 9 angka. Contoh: D121211001."
-            >
+            <Field id={`${uid}-nim`} label="NIM" required hint="Masukkan NIM yang digunakan saat mendaftar.">
               <input
                 id={`${uid}-nim`}
                 type="text"
                 value={nim}
-                maxLength={10}
                 autoCapitalize="characters"
                 autoComplete="username"
                 spellCheck={false}
-                placeholder="D121211001"
-                onChange={(e) => {
-                  setNim(e.target.value.toUpperCase().replace(/\s/g, ""));
-                  if (error) setError("");
-                }}
+                placeholder="NIM mahasiswa"
+                onChange={(e) => { setNim(e.target.value.toUpperCase().replace(/\s/g, "")); if (error) setError(""); }}
                 aria-describedby={describedBy(`${uid}-nim`, undefined, "hint")}
                 className={cn(inputClass(false), "h-11 uppercase")}
               />
@@ -161,29 +146,37 @@ export function LoginView() {
                 value={password}
                 maxLength={72}
                 autoComplete="current-password"
-                onChange={(e) => {
-                  setPassword(e.target.value);
-                  if (error) setError("");
-                }}
+                onChange={(e) => { setPassword(e.target.value); if (error) setError(""); }}
                 className={cn(inputClass(false), "h-11")}
               />
             </Field>
           </div>
         ) : (
-          <Field id={`${uid}-staff`} label="Nama petugas" required className="mt-5">
-            <input
-              id={`${uid}-staff`}
-              type="text"
-              value={staffName}
-              maxLength={50}
-              autoComplete="name"
-              onChange={(e) => {
-                setStaffName(e.target.value);
-                if (error) setError("");
-              }}
-              className={cn(inputClass(false), "h-11")}
-            />
-          </Field>
+          <div className="mt-5 space-y-4">
+            <Field id={`${uid}-staff-email`} label="Email petugas" required hint="Akun petugas tunggal dikelola oleh admin.">
+              <input
+                id={`${uid}-staff-email`}
+                type="email"
+                value={staffEmail}
+                autoComplete="email"
+                readOnly
+                aria-readonly="true"
+                aria-describedby={describedBy(`${uid}-staff-email`, undefined, "hint")}
+                className={cn(inputClass(false), "h-11")}
+              />
+            </Field>
+            <Field id={`${uid}-staff-password`} label="Kata sandi" required>
+              <input
+                id={`${uid}-staff-password`}
+                type="password"
+                value={password}
+                maxLength={72}
+                autoComplete="current-password"
+                onChange={(e) => { setPassword(e.target.value); if (error) setError(""); }}
+                className={cn(inputClass(false), "h-11")}
+              />
+            </Field>
+          </div>
         )}
 
         {error && (
@@ -210,8 +203,8 @@ export function LoginView() {
       <div className="mt-6 flex items-start gap-3 rounded-xl border border-blue-100 bg-blue-50 p-4 text-sm text-blue-900">
         <Icon name="info" className="mt-0.5 size-[18px] shrink-0 text-blue-600" />
         <p className="leading-relaxed">
-          Login ini hanya simulasi untuk prototipe. Akun, perubahan stok, dan pengajuan tersimpan di
-          peramban Anda. Katalog juga dapat dilihat tanpa akun melalui Guest.
+          Autentikasi dan data inventaris/pengajuan disimpan di Supabase. Katalog barang aktif dapat
+          dilihat tanpa akun melalui Guest.
         </p>
       </div>
     </AuthShell>

@@ -15,8 +15,8 @@ type Props = {
   onClose: () => void;
   onEdit: () => void;
   onDelete: () => void;
-  onMarkDamaged: (units: number) => boolean;
-  onMarkRepaired: (units: number) => boolean;
+  onMarkDamaged: (units: number) => boolean | Promise<boolean>;
+  onMarkRepaired: (units: number) => boolean | Promise<boolean>;
 };
 
 function Stat({ label, value, tone }: { label: string; value: number; tone?: string }) {
@@ -106,10 +106,10 @@ export function ItemDetail({ item, activeLoans, onClose, onEdit, onDelete, onMar
               onChange={(e) => setUnits(e.target.value)}
               className={`${inputClass(false)} h-10 sm:w-28`}
             />
-            <Button variant="secondary" disabled={available === 0} onClick={() => onMarkDamaged(parsed)}>
+            <Button variant="secondary" disabled={available === 0} onClick={() => void onMarkDamaged(parsed)}>
               Catat Rusak
             </Button>
-            <Button variant="secondary" disabled={item.damaged === 0} onClick={() => onMarkRepaired(parsed)}>
+            <Button variant="secondary" disabled={item.damaged === 0} onClick={() => void onMarkRepaired(parsed)}>
               Catat Diperbaiki
             </Button>
           </div>

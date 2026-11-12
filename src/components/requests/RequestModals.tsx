@@ -15,17 +15,17 @@ export function RejectModal({
 }: {
   request: BorrowRequest;
   onClose: () => void;
-  onSubmit: (reason: string) => boolean;
+  onSubmit: (reason: string) => boolean | Promise<boolean>;
 }) {
   const uid = useId();
   const [reason, setReason] = useState("");
   const [error, setError] = useState("");
   const formId = `${uid}-reject`;
 
-  const submit = (e: FormEvent) => {
+  const submit = async (e: FormEvent) => {
     e.preventDefault();
     if (reason.trim().length > 200) return setError("Alasan penolakan maksimal 200 karakter.");
-    if (onSubmit(reason)) onClose();
+    if (await onSubmit(reason)) onClose();
   };
 
   return (
@@ -78,7 +78,7 @@ export function ReturnModal({
 }: {
   request: BorrowRequest;
   onClose: () => void;
-  onSubmit: (damagedUnits: number, note: string) => boolean;
+  onSubmit: (damagedUnits: number, note: string) => boolean | Promise<boolean>;
 }) {
   const uid = useId();
   const formId = `${uid}-return`;
@@ -92,14 +92,14 @@ export function ReturnModal({
   const damagedUnits = isDamaged ? (parsed ?? 0) : 0;
   const validPreview = !isDamaged || (parsed !== null && parsed >= 1 && parsed <= qty);
 
-  const submit = (e: FormEvent) => {
+  const submit = async (e: FormEvent) => {
     e.preventDefault();
     if (isDamaged && (parsed === null || parsed < 1 || parsed > qty)) {
       setError(`Isi jumlah unit rusak antara 1 dan ${qty}.`);
       return;
     }
     if (note.trim().length > 200) return;
-    if (onSubmit(damagedUnits, note)) onClose();
+    if (await onSubmit(damagedUnits, note)) onClose();
   };
 
   const options = [

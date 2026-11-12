@@ -4,7 +4,6 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { Icon } from "@/components/ui/Icon";
-import { ConfirmDialog } from "@/components/ui/Modal";
 import { useStore } from "@/lib/store";
 import type { Role } from "@/lib/types";
 import { cn, initials } from "@/lib/utils";
@@ -33,11 +32,10 @@ function Brand() {
 }
 
 export function AppShell({ role, children }: { role: Role; children: ReactNode }) {
-  const { ready, session, requests, logout, resetData } = useStore();
+  const { ready, session, requests, logout } = useStore();
   const router = useRouter();
   const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
-  const [confirmReset, setConfirmReset] = useState(false);
 
   const allowed = ready && session?.role === role;
 
@@ -102,14 +100,6 @@ export function AppShell({ role, children }: { role: Role; children: ReactNode }
             </ul>
           </nav>
           <div className="border-t border-slate-200 p-4">
-            <button
-              type="button"
-              onClick={() => setConfirmReset(true)}
-              className="flex h-10 w-full items-center justify-center gap-2 rounded-lg border border-slate-300 bg-white text-sm font-medium text-slate-700 hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-blue-600"
-            >
-              <Icon name="reset" className="size-4" />
-              Atur ulang data
-            </button>
             <div className="mt-4 flex min-h-11 items-center gap-3">
               {allowed && session ? (
                 <>
@@ -172,18 +162,6 @@ export function AppShell({ role, children }: { role: Role; children: ReactNode }
                   <button
                     type="button"
                     role="menuitem"
-                    onClick={() => {
-                      setMenuOpen(false);
-                      setConfirmReset(true);
-                    }}
-                    className="mt-1 flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-left text-sm text-slate-700 hover:bg-slate-50"
-                  >
-                    <Icon name="reset" className="size-4" />
-                    Atur ulang data
-                  </button>
-                  <button
-                    type="button"
-                    role="menuitem"
                     onClick={handleLogout}
                     className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-left text-sm text-red-700 hover:bg-red-50"
                   >
@@ -239,19 +217,6 @@ export function AppShell({ role, children }: { role: Role; children: ReactNode }
           })}
         </nav>
 
-        {confirmReset && (
-          <ConfirmDialog
-            title="Atur ulang data?"
-            tone="primary"
-            confirmLabel="Atur Ulang"
-            message="Semua barang, pengajuan, dan riwayat transaksi akan dikembalikan ke data awal. Perubahan yang sudah Anda buat akan hilang."
-            onCancel={() => setConfirmReset(false)}
-            onConfirm={() => {
-              resetData();
-              setConfirmReset(false);
-            }}
-          />
-        )}
       </div>
     </ShellContext.Provider>
   );

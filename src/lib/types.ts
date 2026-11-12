@@ -3,12 +3,12 @@ export type Role = "mahasiswa" | "petugas";
 export type Session = {
   role: Role;
   name: string;
-  userId: string;
+  userId: string; // profiles/auth user id (uuid)
   /** Diisi untuk mahasiswa yang masuk dengan akun terdaftar. */
   nim?: string;
 };
 
-/** Akun mahasiswa lokal. Kata sandi disimpan sebagai hash, bukan teks asli. */
+/** @deprecated Akun mahasiswa kini dikelola Supabase Auth; jangan simpan password/hash di profil/localStorage. */
 export type StudentAccount = {
   nim: string;
   name: string;
@@ -47,6 +47,7 @@ export type Item = {
   total: number;
   damaged: number;
   borrowed: number;
+  isActive?: boolean;
 };
 
 export type BorrowRequest = {
