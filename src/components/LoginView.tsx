@@ -8,7 +8,7 @@ import { homeFor } from "@/components/layout/nav";
 import { Button } from "@/components/ui/Button";
 import { Field, describedBy, inputClass } from "@/components/ui/Form";
 import { Icon, type IconName } from "@/components/ui/Icon";
-import { normalizeNim, STAFF_EMAIL } from "@/lib/accounts";
+import { normalizeNim, STAFF_EMAILS } from "@/lib/accounts";
 import { useStore } from "@/lib/store";
 import type { Role } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -33,7 +33,7 @@ export function LoginView() {
   const router = useRouter();
   const uid = useId();
   const [role, setRole] = useState<Role>("mahasiswa");
-  const staffEmail = STAFF_EMAIL;
+  const [staffEmail, setStaffEmail] = useState("");
   const [nim, setNim] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -153,14 +153,14 @@ export function LoginView() {
           </div>
         ) : (
           <div className="mt-5 space-y-4">
-            <Field id={`${uid}-staff-email`} label="Email petugas" required hint="Akun petugas tunggal dikelola oleh admin.">
+            <Field id={`${uid}-staff-email`} label="Email petugas" required hint="Masukkan email petugas yang ditetapkan admin.">
               <input
                 id={`${uid}-staff-email`}
                 type="email"
                 value={staffEmail}
+                onChange={(e) => { setStaffEmail(e.target.value.toLowerCase()); if (error) setError(""); }}
                 autoComplete="email"
-                readOnly
-                aria-readonly="true"
+                placeholder="email petugas"
                 aria-describedby={describedBy(`${uid}-staff-email`, undefined, "hint")}
                 className={cn(inputClass(false), "h-11")}
               />

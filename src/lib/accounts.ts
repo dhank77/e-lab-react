@@ -1,7 +1,7 @@
 import type { Role } from "./types";
 
 const ACCOUNTS_KEY = "labpinjam:v1:student-accounts"; // legacy, no longer used
-export const STAFF_EMAIL = "hherawatii083@gmail.com";
+export const STAFF_EMAILS: string[] = ["hherawatii083@gmail.com", "admin123@elab.local"];
 
 export type RegisterValues = {
   name: string;

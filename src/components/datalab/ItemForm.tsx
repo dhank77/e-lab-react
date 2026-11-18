@@ -11,7 +11,7 @@ import {
   type ItemErrors,
   type ItemFormValues,
 } from "@/lib/inventory";
-import type { Item } from "@/lib/types";
+import { CONDITIONS, LABS, type Item } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 type Props = {
@@ -22,7 +22,7 @@ type Props = {
   onSubmit: (values: ItemFormValues) => boolean | Promise<boolean>;
 };
 
-const FIELD_ORDER: Array<keyof ItemFormValues> = ["name", "category", "total", "damaged", "description"];
+const FIELD_ORDER: Array<keyof ItemFormValues> = ["name", "category", "lab", "total", "damaged", "description"];
 
 export function ItemForm({ formId, item, items, categories, onSubmit }: Props) {
   const uid = useId();
@@ -30,6 +30,7 @@ export function ItemForm({ formId, item, items, categories, onSubmit }: Props) {
   const [values, setValues] = useState<ItemFormValues>({
     name: item?.name ?? "",
     category: item?.category ?? "",
+    lab: item?.lab ?? "",
     description: item?.description ?? "",
     total: item ? String(item.total) : "",
     damaged: item ? String(item.damaged) : "0",
@@ -97,6 +98,20 @@ export function ItemForm({ formId, item, items, categories, onSubmit }: Props) {
             <option key={c} value={c} />
           ))}
         </datalist>
+      </Field>
+
+      <Field id={id("lab")} label="Laboratorium" error={errors.lab} hint="Pilih lab tempat barang ditempatkan.">
+        <select
+          {...field("lab")}
+          value={values.lab}
+          onChange={(e) => set("lab", e.target.value)}
+          className={cn(inputClass(!!errors.lab), "h-10")}
+        >
+          <option value="">Pilih lab…</option>
+          {LABS.map((l) => (
+            <option key={l} value={l}>{l}</option>
+          ))}
+        </select>
       </Field>
 
       <div className="grid gap-4 sm:grid-cols-2">

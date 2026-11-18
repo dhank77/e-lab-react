@@ -9,18 +9,29 @@ import { Icon } from "@/components/ui/Icon";
 import { EmptyState, Skeleton } from "@/components/ui/Layout";
 import { getAvailable, getCondition } from "@/lib/inventory";
 import { useStore } from "@/lib/store";
+import { CONDITIONS, LABS } from "@/lib/types";
 
 export function GuestCatalogView() {
   const { ready, items } = useStore();
   const [query, setQuery] = useState("");
   const deferredQuery = useDeferredValue(query);
   const [category, setCategory] = useState("");
+  const [lab, setLab] = useState("");
+  const [condition, setCondition] = useState("");
 
   const categories = useMemo(
     () => Array.from(new Set(items.map((i) => i.category))).sort((a, b) => a.localeCompare(b, "id")),
     [items],
   );
+  const labs = useMemo(
+    () =>
+      Array.from(
+        new Set(items.map((i) => i.lab).filter((l): l is string => Boolean(l))),
+      ).sort((a, b) => a.localeCompare(b, "id")),
+    [items],
+  );
   const activeCategory = categories.includes(category) ? category : "";
+  const activeLab = labs.includes(lab) ? lab : "";
 
   const list = useMemo(() => {
     const q = deferredQuery.trim().toLowerCase();
@@ -28,15 +39,19 @@ export function GuestCatalogView() {
       .filter(
         (i) =>
           (!q || i.name.toLowerCase().includes(q)) &&
-          (!activeCategory || i.category === activeCategory),
+          (!activeCategory || i.category === activeCategory) &&
+          (!activeLab || i.lab === activeLab) &&
+          (!condition || getCondition(i) === condition),
       )
       .sort((a, b) => a.name.localeCompare(b.name, "id", { sensitivity: "base" }));
-  }, [items, deferredQuery, activeCategory]);
+  }, [items, deferredQuery, activeCategory, activeLab, condition]);
 
-  const filtering = query.trim() !== "" || activeCategory !== "";
+  const filtering = query.trim() !== "" || activeCategory !== "" || activeLab !== "" || condition !== "";
   const reset = () => {
     setQuery("");
     setCategory("");
+    setLab("");
+    setCondition("");
   };
 
   return (
@@ -94,6 +109,30 @@ export function GuestCatalogView() {
                 </option>
               ))}
             </Select>
+            <Select
+              aria-label="Filter laboratorium"
+              value={activeLab}
+              onChange={(e) => setLab(e.target.value)}
+            >
+              <option value="">Semua lab</option>
+              {labs.map((l) => (
+                <option key={l} value={l}>
+                  {l}
+                </option>
+              ))}
+            </Select>
+            <Select
+              aria-label="Filter kondisi"
+              value={condition}
+              onChange={(e) => setCondition(e.target.value)}
+            >
+              <option value="">Semua kondisi</option>
+              {CONDITIONS.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </Select>
           </div>
 
           <div className="mt-6 flex items-center justify-between gap-3 border-b border-slate-200 pb-3">
@@ -143,6 +182,12 @@ export function GuestCatalogView() {
                       <h3 className="font-bold text-blue-950">{item.name}</h3>
                       <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-2 text-sm text-slate-500">
                         <span>{item.category}</span>
+                        {item.lab && (
+                          <>
+                            <span aria-hidden="true" className="text-slate-300">•</span>
+                            <span>{item.lab}</span>
+                          </>
+                        )}
                         <span aria-hidden="true" className="text-slate-300">•</span>
                         <ConditionBadge condition={getCondition(item)} />
                       </div>

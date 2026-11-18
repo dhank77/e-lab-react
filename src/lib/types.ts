@@ -17,9 +17,19 @@ export type StudentAccount = {
   createdAt: string;
 };
 
-export type Condition = "Baik" | "Rusak" | "Campuran";
+export type Condition = "Baik" | "Rusak ringan" | "Rusak berat";
 
-export const CONDITIONS: Condition[] = ["Baik", "Rusak", "Campuran"];
+export const CONDITIONS: Condition[] = ["Baik", "Rusak ringan", "Rusak berat"];
+
+export const LABS: string[] = [
+  "Lab Parallel Computing and IoT",
+  "Lab Cloud Computing and Information System",
+  "Lab Internet dan Jaringan Komputer",
+  "Lab Artificial Intelligence (AIMP)",
+  "Lab Animasi dan Multimedia",
+  "Lab Komputer",
+  "Computer Based System",
+];
 
 export type RequestStatus =
   | "Menunggu"
@@ -43,6 +53,7 @@ export type Item = {
   id: string;
   name: string;
   category: string;
+  lab?: string;
   description: string;
   total: number;
   damaged: number;

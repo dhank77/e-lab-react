@@ -50,9 +50,7 @@ drop index if exists public.profiles_nim_unique_idx;
 create unique index profiles_nim_unique_idx
   on public.profiles (upper(btrim(nim))) where nim is not null;
 
-create unique index if not exists profiles_single_petugas_idx
-  on public.profiles (role) where role = 'petugas';
-
+-- Tidak lagi membatasi hanya satu petugas; beberapa akun petugas diperbolehkan.
 create or replace function public.guard_petugas_profile()
 returns trigger
 language plpgsql
@@ -61,10 +59,11 @@ set search_path = public
 as $$
 declare
   v_email text;
+  v_allowed text[] := array['hherawatii083@gmail.com', 'admin123@elab.local'];
 begin
   if new.role = 'petugas' then
     select lower(u.email) into v_email from auth.users u where u.id = new.id;
-    if v_email is distinct from 'hherawatii083@gmail.com' then
+    if v_email is not null and not (v_email = any(v_allowed)) then
       raise exception 'Hanya akun petugas yang ditetapkan admin yang boleh memiliki role petugas.';
     end if;
     new.nim := null;
@@ -97,8 +96,8 @@ begin
   v_name := nullif(btrim(coalesce(new.raw_user_meta_data ->> 'name', '')), '');
   v_nim := nullif(upper(btrim(coalesce(new.raw_user_meta_data ->> 'nim', ''))), '');
 
-  -- Petugas is created by an administrator and linked by the repair script.
-  if lower(coalesce(new.email, '')) = 'hherawatii083@gmail.com' then
+  -- Petugas is created by an administrator and linked by the seed/repair script.
+  if lower(coalesce(new.email, '')) = any (array['hherawatii083@gmail.com', 'admin123@elab.local']) then
     return new;
   end if;
   if v_name is null or v_nim is null then
@@ -122,6 +121,7 @@ create table if not exists public.inventory_items (
   id uuid primary key default gen_random_uuid(),
   name text not null,
   category text not null,
+  lab text,
   description text not null default '',
   total integer not null,
   damaged integer not null default 0,
@@ -131,6 +131,7 @@ create table if not exists public.inventory_items (
   updated_at timestamptz not null default now(),
   constraint inventory_name_len_chk check (char_length(btrim(name)) between 3 and 80),
   constraint inventory_category_len_chk check (char_length(btrim(category)) between 1 and 40),
+  constraint inventory_lab_len_chk check (lab is null or char_length(btrim(lab)) between 1 and 120),
   constraint inventory_description_len_chk check (char_length(description) <= 200),
   constraint inventory_total_chk check (total >= 1 and total <= 100000),
   constraint inventory_damaged_chk check (damaged >= 0),
@@ -213,7 +214,7 @@ as $$
     join auth.users u on u.id = p.id
     where p.id = auth.uid()
       and p.role = 'petugas'
-      and lower(u.email) = 'hherawatii083@gmail.com'
+      and lower(u.email) = any (array['hherawatii083@gmail.com', 'admin123@elab.local'])
   );
 $$;
 

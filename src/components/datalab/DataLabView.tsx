@@ -9,7 +9,7 @@ import { Card, EmptyState, PageHeader, PageSkeleton, StatCard } from "@/componen
 import { ConfirmDialog, Modal } from "@/components/ui/Modal";
 import { getAvailable, getCondition, getSummary } from "@/lib/inventory";
 import { useStore } from "@/lib/store";
-import { CONDITIONS, type Item } from "@/lib/types";
+import { CONDITIONS, LABS, type Item } from "@/lib/types";
 import { ItemDetail } from "./ItemDetail";
 import { ItemForm } from "./ItemForm";
 import { ItemTable } from "./ItemTable";
@@ -24,6 +24,7 @@ export function DataLabView() {
   const [query, setQuery] = useState("");
   const deferredQuery = useDeferredValue(query);
   const [category, setCategory] = useState("");
+  const [lab, setLab] = useState("");
   const [condition, setCondition] = useState("");
   const [page, setPage] = useState(1);
   const [modal, setModal] = useState<ModalState>(null);
@@ -33,7 +34,15 @@ export function DataLabView() {
     () => Array.from(new Set(items.map((i) => i.category))).sort((a, b) => a.localeCompare(b, "id")),
     [items],
   );
+  const labs = useMemo(
+    () =>
+      Array.from(
+        new Set(items.map((i) => i.lab).filter((l): l is string => Boolean(l))),
+      ).sort((a, b) => a.localeCompare(b, "id")),
+    [items],
+  );
   const activeCategory = categories.includes(category) ? category : "";
+  const activeLab = labs.includes(lab) ? lab : "";
 
   const filtered = useMemo(() => {
     const q = deferredQuery.trim().toLowerCase();
@@ -41,19 +50,21 @@ export function DataLabView() {
       (i) =>
         (!q || i.name.toLowerCase().includes(q)) &&
         (!activeCategory || i.category === activeCategory) &&
+        (!activeLab || i.lab === activeLab) &&
         (!condition || getCondition(i) === condition),
     );
-  }, [items, deferredQuery, activeCategory, condition]);
+  }, [items, deferredQuery, activeCategory, activeLab, condition]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const currentPage = Math.min(page, totalPages);
   const startIndex = (currentPage - 1) * PAGE_SIZE;
   const visible = filtered.slice(startIndex, startIndex + PAGE_SIZE);
-  const filtering = query.trim() !== "" || activeCategory !== "" || condition !== "";
+  const filtering = query.trim() !== "" || activeCategory !== "" || activeLab !== "" || condition !== "";
 
   const resetFilters = () => {
     setQuery("");
     setCategory("");
+    setLab("");
     setCondition("");
     setPage(1);
   };
@@ -110,6 +121,21 @@ export function DataLabView() {
               {categories.map((c) => (
                 <option key={c} value={c}>
                   {c}
+                </option>
+              ))}
+            </Select>
+            <Select
+              aria-label="Filter laboratorium"
+              value={activeLab}
+              onChange={(e) => {
+                setLab(e.target.value);
+                setPage(1);
+              }}
+            >
+              <option value="">Semua lab</option>
+              {labs.map((l) => (
+                <option key={l} value={l}>
+                  {l}
                 </option>
               ))}
             </Select>

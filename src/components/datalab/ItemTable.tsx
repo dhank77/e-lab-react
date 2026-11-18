@@ -48,6 +48,7 @@ export function ItemTable({ items, startIndex, onDetail, onEdit, onDelete }: Pro
           <tr className="border-y border-slate-200 bg-slate-50/70 text-slate-600">
             <th scope="col" className="w-16 px-5 py-3 font-medium">No.</th>
             <th scope="col" className="px-3 py-3 font-medium">Nama Barang</th>
+            <th scope="col" className="px-3 py-3 font-medium">Lab</th>
             <th scope="col" className="px-3 py-3 text-right font-medium">Jumlah Tersedia</th>
             <th scope="col" className="px-3 py-3 font-medium">Kondisi</th>
             <th scope="col" className="px-5 py-3 text-right font-medium">Aksi</th>
@@ -61,6 +62,7 @@ export function ItemTable({ items, startIndex, onDetail, onEdit, onDelete }: Pro
                 <p className="font-medium text-slate-900">{item.name}</p>
                 <p className="text-xs text-slate-500">{item.category}</p>
               </td>
+              <td className="px-3 py-3 text-slate-600 text-sm">{item.lab ?? "—"}</td>
               <td className="px-3 py-3 text-right">
                 <Stock item={item} />
               </td>
@@ -82,7 +84,7 @@ export function ItemTable({ items, startIndex, onDetail, onEdit, onDelete }: Pro
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
                 <p className="text-xs text-slate-500">
-                  {startIndex + i + 1}. {item.category}
+                  {startIndex + i + 1}. {item.category}{item.lab ? ` · ${item.lab}` : ""}
                 </p>
                 <p className="mt-0.5 font-medium text-slate-900">{item.name}</p>
               </div>

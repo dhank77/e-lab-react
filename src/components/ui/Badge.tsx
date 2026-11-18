@@ -29,8 +29,8 @@ export function Badge({ tone = "neutral", children, className }: { tone?: Tone; 
 
 const conditionTone: Record<Condition, Tone> = {
   Baik: "success",
-  Rusak: "danger",
-  Campuran: "warning",
+  "Rusak ringan": "warning",
+  "Rusak berat": "danger",
 };
 
 export function ConditionBadge({ condition }: { condition: Condition }) {

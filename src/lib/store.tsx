@@ -12,7 +12,7 @@ import {
 } from "react";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 import { useToast } from "@/components/ui/Toast";
-import { normalizeNim, STAFF_EMAIL } from "./accounts";
+import { normalizeNim, STAFF_EMAILS } from "./accounts";
 import * as inv from "./inventory";
 import type { ItemFormValues, RequestFormValues, Result } from "./inventory";
 import { createClient } from "./supabase/client";
@@ -44,6 +44,7 @@ function mapItem(row: Record<string, unknown>): Item {
     id: String(row.id),
     name: String(row.name ?? ""),
     category: String(row.category ?? "Lainnya"),
+    lab: row.lab ? String(row.lab) : undefined,
     description: String(row.description ?? ""),
     total,
     damaged,
@@ -290,7 +291,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
 
       loginPetugas: async (email, password): Promise<AuthResult> => {
         const e = email.trim().toLowerCase();
-        if (e !== STAFF_EMAIL) {
+        if (!STAFF_EMAILS.includes(e)) {
           return { ok: false, message: "Gunakan email petugas yang ditetapkan admin." };
         }
         if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)) {

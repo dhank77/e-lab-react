@@ -10,6 +10,7 @@ import { Card, EmptyState, PageHeader, PageSkeleton } from "@/components/ui/Layo
 import { Modal } from "@/components/ui/Modal";
 import { getAvailable, getCondition } from "@/lib/inventory";
 import { useStore } from "@/lib/store";
+import { CONDITIONS, LABS, type Item } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { RequestForm } from "./RequestForm";
 
@@ -22,6 +23,8 @@ export function KatalogView() {
   const [query, setQuery] = useState("");
   const deferredQuery = useDeferredValue(query);
   const [category, setCategory] = useState("");
+  const [lab, setLab] = useState("");
+  const [condition, setCondition] = useState("");
   const [onlyAvailable, setOnlyAvailable] = useState(false);
   const [dialog, setDialog] = useState<Dialog>(null);
 
@@ -29,7 +32,15 @@ export function KatalogView() {
     () => Array.from(new Set(items.map((i) => i.category))).sort((a, b) => a.localeCompare(b, "id")),
     [items],
   );
+  const labs = useMemo(
+    () =>
+      Array.from(
+        new Set(items.map((i) => i.lab).filter((l): l is string => Boolean(l))),
+      ).sort((a, b) => a.localeCompare(b, "id")),
+    [items],
+  );
   const activeCategory = categories.includes(category) ? category : "";
+  const activeLab = labs.includes(lab) ? lab : "";
 
   const list = useMemo(() => {
     const q = deferredQuery.trim().toLowerCase();
@@ -37,13 +48,17 @@ export function KatalogView() {
       (i) =>
         (!q || i.name.toLowerCase().includes(q) || i.category.toLowerCase().includes(q)) &&
         (!activeCategory || i.category === activeCategory) &&
+        (!activeLab || i.lab === activeLab) &&
+        (!condition || getCondition(i) === condition) &&
         (!onlyAvailable || getAvailable(i) > 0),
     );
-  }, [items, deferredQuery, activeCategory, onlyAvailable]);
+  }, [items, deferredQuery, activeCategory, activeLab, condition, onlyAvailable]);
 
   const reset = () => {
     setQuery("");
     setCategory("");
+    setLab("");
+    setCondition("");
     setOnlyAvailable(false);
   };
 
@@ -76,6 +91,22 @@ export function KatalogView() {
             <Select aria-label="Filter kategori" value={activeCategory} onChange={(e) => setCategory(e.target.value)}>
               <option value="">Semua kategori</option>
               {categories.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </Select>
+            <Select aria-label="Filter laboratorium" value={activeLab} onChange={(e) => setLab(e.target.value)}>
+              <option value="">Semua lab</option>
+              {labs.map((l) => (
+                <option key={l} value={l}>
+                  {l}
+                </option>
+              ))}
+            </Select>
+            <Select aria-label="Filter kondisi" value={condition} onChange={(e) => setCondition(e.target.value)}>
+              <option value="">Semua kondisi</option>
+              {CONDITIONS.map((c) => (
                 <option key={c} value={c}>
                   {c}
                 </option>

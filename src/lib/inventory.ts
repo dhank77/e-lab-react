@@ -37,8 +37,8 @@ export function getAvailable(item: StockFields): number {
 /** Kondisi diturunkan dari jumlah unit agar selalu konsisten dengan stok. */
 export function getCondition(item: Pick<Item, "total" | "damaged">): Condition {
   if (item.damaged <= 0) return "Baik";
-  if (item.damaged >= item.total) return "Rusak";
-  return "Campuran";
+  if (item.damaged >= item.total) return "Rusak berat";
+  return "Rusak ringan";
 }
 
 export function getSummary(items: Item[], requests: BorrowRequest[]) {
@@ -83,6 +83,7 @@ const clean = (s: string) => s.trim().replace(/\s+/g, " ");
 export type ItemFormValues = {
   name: string;
   category: string;
+  lab: string;
   description: string;
   total: string;
   damaged: string;
@@ -91,6 +92,7 @@ export type ItemErrors = Partial<Record<keyof ItemFormValues, string>>;
 type ItemParsed = {
   name: string;
   category: string;
+  lab: string;
   description: string;
   total: number;
   damaged: number;
@@ -104,6 +106,7 @@ export function validateItem(
   const errors: ItemErrors = {};
   const name = clean(values.name);
   const category = clean(values.category);
+  const lab = clean(values.lab);
   const description = values.description.trim();
 
   if (!name) errors.name = "Nama barang wajib diisi.";
@@ -117,6 +120,8 @@ export function validateItem(
 
   if (!category) errors.category = "Kategori wajib diisi.";
   else if (category.length > 40) errors.category = "Kategori maksimal 40 karakter.";
+
+  if (lab && lab.length > 120) errors.lab = "Lab maksimal 120 karakter.";
 
   if (description.length > 200) errors.description = "Keterangan maksimal 200 karakter.";
 
@@ -148,7 +153,7 @@ export function validateItem(
   if (Object.keys(errors).length > 0 || total === null || damaged === null) {
     return { errors, parsed: null };
   }
-  return { errors, parsed: { name, category, description, total, damaged } };
+  return { errors, parsed: { name, category, lab, description, total, damaged } };
 }
 
 export type RequestFormValues = {
@@ -217,6 +222,7 @@ export function addItem(data: AppData, values: ItemFormValues): Result {
     id: newId("brg"),
     name: parsed.name,
     category: parsed.category,
+    lab: parsed.lab || undefined,
     description: parsed.description,
     total: parsed.total,
     damaged: parsed.damaged,
@@ -236,6 +242,7 @@ export function updateItem(data: AppData, id: string, values: ItemFormValues): R
           ...i,
           name: parsed.name,
           category: parsed.category,
+          lab: parsed.lab || undefined,
           description: parsed.description,
           total: parsed.total,
           damaged: parsed.damaged,
