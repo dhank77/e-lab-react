@@ -12,7 +12,7 @@ import {
 } from "react";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 import { useToast } from "@/components/ui/Toast";
-import { normalizeNim, STAFF_EMAILS } from "./accounts";
+import { normalizeUsername, STAFF_EMAILS, type RegisterValues } from "./accounts";
 import * as inv from "./inventory";
 import type { ItemFormValues, RequestFormValues, Result } from "./inventory";
 import { createClient } from "./supabase/client";
@@ -22,14 +22,7 @@ const EMPTY: AppData = { version: 1, items: [], requests: [] };
 
 type AuthResult =
   | { ok: true; message: string }
-  | { ok: false; message: string; field?: "nim" | "password" | "name" };
-
-export type RegisterValues = {
-  name: string;
-  nim: string;
-  password: string;
-  confirmPassword: string;
-};
+  | { ok: false; message: string; field?: "username" | "password" | "confirmPassword" };
 
 const num = (v: unknown, fallback = 0) => {
   const n = typeof v === "number" ? v : typeof v === "string" ? Number(v) : NaN;
@@ -80,20 +73,20 @@ function mapRequest(row: Record<string, unknown>): BorrowRequest {
   };
 }
 
-// Hash the NIM into a stable synthetic email so arbitrary NIM values stay valid
-// Supabase Auth identifiers without exposing the NIM itself.
-async function studentAuthEmail(nim: string): Promise<string> {
+// Hash the username into a stable synthetic email so arbitrary username values stay valid
+// Supabase Auth identifiers without exposing the username itself.
+async function studentAuthEmail(username: string): Promise<string> {
   const digest = await globalThis.crypto.subtle.digest(
     "SHA-256",
-    new TextEncoder().encode(normalizeNim(nim)),
+    new TextEncoder().encode(normalizeUsername(username)),
   );
   const hex = Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
-  return `s-${hex}@mahasiswa.e-lab.example.com`;
+  return `s-${hex}@students.elab.local`;
 }
 
-// Compatibility for accounts created before NIM aliases were hashed.
-function legacyStudentAuthEmail(nim: string): string {
-  return `${normalizeNim(nim).toLowerCase()}@mahasiswa.e-lab.example.com`;
+// Compatibility for accounts created before username aliases were hashed.
+function legacyStudentAuthEmail(username: string): string {
+  return `${normalizeUsername(username).toLowerCase()}@students.elab.local`;
 }
 
 function todayIso(): string {
@@ -106,7 +99,7 @@ type StoreValue = {
   items: Item[];
   requests: BorrowRequest[];
   loginPetugas: (email: string, password: string) => Promise<AuthResult>;
-  loginStudent: (nim: string, password: string) => Promise<AuthResult>;
+  loginStudent: (username: string, password: string) => Promise<AuthResult>;
   registerStudent: (values: RegisterValues) => Promise<AuthResult>;
   logout: () => Promise<void>;
   resetData: () => void;
@@ -122,6 +115,7 @@ type StoreValue = {
   rejectRequest: (id: string, reason: string) => Promise<boolean>;
   handoverRequest: (id: string) => Promise<boolean>;
   returnRequest: (id: string, damagedUnits: number, note: string) => Promise<boolean>;
+  deleteAccount: () => Promise<boolean>;
 };
 
 const StoreContext = createContext<StoreValue | null>(null);
@@ -151,15 +145,15 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     async (userId: string): Promise<Session | null> => {
       const { data: profile } = await supabase
         .from("profiles")
-        .select("id, name, nim, role")
+        .select("id, name, nim, username, role")
         .eq("id", userId)
         .maybeSingle();
       if (!profile) return null;
       return {
         role: profile.role as Session["role"],
-        name: String(profile.name ?? ""),
+        name: String(profile.name ?? profile.username ?? ""),
         userId: String(profile.id),
-        nim: profile.nim ?? undefined,
+        username: String(profile.username ?? ""),
       };
     },
     [supabase],
@@ -308,31 +302,31 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         return { ok: true, message: `Selamat datang, ${prof.name}.` };
       },
 
-      loginStudent: async (nim, password): Promise<AuthResult> => {
-        const n = normalizeNim(nim);
-        if (!n) return { ok: false, message: "NIM wajib diisi.", field: "nim" };
+      loginStudent: async (username, password): Promise<AuthResult> => {
+        const u = normalizeUsername(username);
+        if (!u) return { ok: false, message: "Username wajib diisi.", field: "username" };
         if (!password) return { ok: false, message: "Kata sandi wajib diisi.", field: "password" };
         let { data: res, error } = await supabase.auth.signInWithPassword({
-          email: await studentAuthEmail(n),
+          email: await studentAuthEmail(u),
           password,
         });
         if (error?.code === "invalid_credentials") {
-          const legacyEmail = legacyStudentAuthEmail(n);
-          if (legacyEmail !== await studentAuthEmail(n)) {
+          const legacyEmail = legacyStudentAuthEmail(u);
+          if (legacyEmail !== await studentAuthEmail(u)) {
             const fallback = await supabase.auth.signInWithPassword({ email: legacyEmail, password });
             res = fallback.data;
             error = fallback.error;
           }
         }
         if (error || !res.user) {
-          return { ok: false, message: "NIM atau kata sandi salah, atau akun belum terdaftar." };
+          return { ok: false, message: "Username atau kata sandi salah, atau akun belum terdaftar." };
         }
         const prof = await fetchProfileSession(res.user.id);
         if (!prof || prof.role !== "mahasiswa") {
           await supabase.auth.signOut();
           return { ok: false, message: "Akun ini tidak terdaftar sebagai mahasiswa." };
         }
-        return { ok: true, message: `Selamat datang, ${prof.name}.` };
+        return { ok: true, message: `Selamat datang, ${prof.name ?? prof.username ?? u}.` };
       },
 
       registerStudent: async (values): Promise<AuthResult> => {
@@ -340,13 +334,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         const { errors, parsed } = validateRegistration(values);
         const firstError = Object.entries(errors)[0] as [keyof RegisterValues, string] | undefined;
         if (!parsed) {
-          return { ok: false, message: firstError?.[1] ?? "Data pendaftaran belum valid.", field: firstError?.[0] as "nim"|"password"|"name" };
+          return { ok: false, message: firstError?.[1] ?? "Data pendaftaran belum valid.", field: firstError?.[0] as "username"|"password"|"confirmPassword" };
         }
-        const email = await studentAuthEmail(parsed.nim);
+        const email = await studentAuthEmail(parsed.username);
         const { data: res, error } = await supabase.auth.signUp({
           email,
           password: parsed.password,
-          options: { data: { name: parsed.name, nim: parsed.nim } },
+          options: { data: { username: parsed.username, name: parsed.username } },
         });
         if (error) {
           const lower = error.message.toLowerCase();
@@ -354,11 +348,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             return { ok: false, message: "Terlalu banyak percobaan pendaftaran dalam waktu singkat. Coba lagi dalam beberapa menit atau hubungi admin untuk menambah batas pendaftaran di Supabase Dashboard." };
           }
           const msg = /already|registered|exists|duplicate|unique/i.test(error.message)
-            ? "NIM ini sudah terdaftar. Silakan masuk atau gunakan NIM lain."
+            ? "Username ini sudah terdaftar. Silakan masuk atau gunakan username lain."
             : /invalid/i.test(error.message) && /email/i.test(error.message)
               ? "Pendaftaran gagal karena format email internal ditolak. Periksa konfigurasi Auth Supabase (izinkan pendaftaran email) lalu coba lagi."
               : `Pendaftaran gagal: ${error.message}`;
-          return { ok: false, message: msg, field: /already|registered|exists|duplicate|unique/i.test(error.message) ? "nim" : undefined };
+          return { ok: false, message: msg, field: /already|registered|exists|duplicate|unique/i.test(error.message) ? "username" : undefined };
         }
         // Some projects may require email confirmation; profile may be created by trigger or client fallback.
         if (res.user) {
@@ -367,7 +361,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           // and must not fail registration when there is no active session (RLS blocks client insert).
           try {
             await supabase.from("profiles").upsert(
-              { id: res.user.id, name: parsed.name, nim: parsed.nim, role: "mahasiswa" },
+              { id: res.user.id, name: parsed.username, nim: null, username: parsed.username, role: "mahasiswa" },
               { onConflict: "id" },
             );
           } catch {
@@ -376,7 +370,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
           // Keep flow explicit: if Supabase auto-created a session, sign out so user logs in manually.
           if (res.session) await supabase.auth.signOut();
         }
-        return { ok: true, message: `Akun dengan NIM ${parsed.nim} berhasil dibuat. Silakan masuk.` };
+        return { ok: true, message: `Akun dengan username ${parsed.username} berhasil dibuat. Silakan masuk.` };
       },
 
       logout: async () => {
@@ -558,6 +552,21 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             ? `Pengembalian dicatat: ${good} unit kembali tersedia, ${damagedUnits} unit dicatat rusak.`
             : `Pengembalian dicatat: ${r?.quantity ?? 0} unit kembali ke stok tersedia.`;
           return { ok: true, message };
+        }),
+
+      deleteAccount: () =>
+        wrap(async () => {
+          const s = need(); if (!s || s.role !== "mahasiswa") return { ok: false, message: "Akses ditolak." };
+          const res = await fetch("/api/account/delete", { method: "POST" });
+          const json = await res.json().catch(() => ({ ok: false, error: "Gagal menghapus akun." }));
+          if (!res.ok || !json.ok) {
+            return { ok: false, message: json.error ?? "Gagal menghapus akun." };
+          }
+          await supabase.auth.signOut();
+          sessionRef.current = null;
+          setSession(null);
+          await fetchAll(null);
+          return { ok: true, message: json.message ?? "Akun berhasil dihapus." };
         }),
     }),
     [ready, session, data, supabase, fetchProfileSession, fetchAll, need, wrap, notify],

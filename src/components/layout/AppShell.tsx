@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { Icon } from "@/components/ui/Icon";
+import { ConfirmDialog } from "@/components/ui/Modal";
 import { useStore } from "@/lib/store";
 import type { Role } from "@/lib/types";
 import { cn, initials } from "@/lib/utils";
@@ -32,10 +33,12 @@ function Brand() {
 }
 
 export function AppShell({ role, children }: { role: Role; children: ReactNode }) {
-  const { ready, session, requests, logout } = useStore();
+  const { ready, session, requests, logout, deleteAccount } = useStore();
   const router = useRouter();
   const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const allowed = ready && session?.role === role;
 
@@ -55,6 +58,17 @@ export function AppShell({ role, children }: { role: Role; children: ReactNode }
     setMenuOpen(false);
     logout();
     router.replace("/");
+  };
+
+  const handleDeleteAccount = async () => {
+    setDeleteOpen(false);
+    setDeleting(true);
+    try {
+      await deleteAccount();
+      router.replace("/");
+    } finally {
+      setDeleting(false);
+    }
   };
 
   const badgeFor = (item: (typeof nav)[number]) =>
@@ -119,6 +133,15 @@ export function AppShell({ role, children }: { role: Role; children: ReactNode }
                   >
                     <Icon name="logout" className="size-5" />
                   </button>
+                  <button
+                    type="button"
+                    onClick={() => setDeleteOpen(true)}
+                    aria-label="Hapus akun"
+                    title="Hapus akun"
+                    className="inline-flex size-9 items-center justify-center rounded-lg text-red-600 hover:bg-red-50 focus-visible:outline-2 focus-visible:outline-red-600"
+                  >
+                    <Icon name="trash" className="size-5" />
+                  </button>
                 </>
               ) : (
                 <div className="h-10 w-full rounded-lg bg-slate-100" />
@@ -168,6 +191,15 @@ export function AppShell({ role, children }: { role: Role; children: ReactNode }
                     <Icon name="logout" className="size-4" />
                     Keluar
                   </button>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={() => { setMenuOpen(false); setDeleteOpen(true); }}
+                    className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-left text-sm text-red-700 hover:bg-red-50"
+                  >
+                    <Icon name="trash" className="size-4" />
+                    Hapus Akun
+                  </button>
                 </div>
               </>
             )}
@@ -216,6 +248,27 @@ export function AppShell({ role, children }: { role: Role; children: ReactNode }
             );
           })}
         </nav>
+
+        {deleteOpen && (
+          <ConfirmDialog
+            title="Hapus akun?"
+            tone="danger"
+            confirmLabel="Ya, Hapus Akun"
+            cancelLabel="Batal"
+            disabled={deleting}
+            onConfirm={handleDeleteAccount}
+            onCancel={() => setDeleteOpen(false)}
+            message={
+              <>
+                <p>
+                  Menghapus akun akan menghapus profil, riwayat pengajuan, dan akun masuk Anda
+                  secara permanen. Tindakan ini tidak dapat diurungkan.
+                </p>
+                {deleting && <p className="mt-2 text-xs text-slate-500">Sedang memproses…</p>}
+              </>
+            }
+          />
+        )}
 
       </div>
     </ShellContext.Provider>

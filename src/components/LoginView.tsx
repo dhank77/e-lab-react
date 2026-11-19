@@ -8,7 +8,7 @@ import { homeFor } from "@/components/layout/nav";
 import { Button } from "@/components/ui/Button";
 import { Field, describedBy, inputClass } from "@/components/ui/Form";
 import { Icon, type IconName } from "@/components/ui/Icon";
-import { normalizeNim, STAFF_EMAILS } from "@/lib/accounts";
+import { normalizeUsername, STAFF_EMAILS } from "@/lib/accounts";
 import { useStore } from "@/lib/store";
 import type { Role } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -17,7 +17,7 @@ const ROLES: Array<{ value: Role; title: string; desc: string; icon: IconName }>
   {
     value: "mahasiswa",
     title: "Mahasiswa",
-    desc: "Masuk dengan NIM dan kata sandi akun Anda.",
+    desc: "Masuk dengan username dan kata sandi akun Anda.",
     icon: "graduation",
   },
   {
@@ -34,7 +34,7 @@ export function LoginView() {
   const uid = useId();
   const [role, setRole] = useState<Role>("mahasiswa");
   const [staffEmail, setStaffEmail] = useState("");
-  const [nim, setNim] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -44,10 +44,10 @@ export function LoginView() {
   }, [ready, session, router]);
 
   useEffect(() => {
-    const value = new URLSearchParams(window.location.search).get("nim");
+    const value = new URLSearchParams(window.location.search).get("username");
     if (value) {
       setRole("mahasiswa");
-      setNim(normalizeNim(value).slice(0, 10));
+      setUsername(normalizeUsername(value));
     }
   }, []);
 
@@ -70,11 +70,11 @@ export function LoginView() {
       return;
     }
 
-    if (!nim.trim()) return setError("NIM wajib diisi.");
+    if (!username.trim()) return setError("Username wajib diisi.");
     if (!password) return setError("Kata sandi wajib diisi.");
     setBusy(true);
     try {
-      const result = await loginStudent(nim, password);
+      const result = await loginStudent(username, password);
       if (result.ok) router.push(homeFor("mahasiswa"));
       else setError(result.message);
     } finally {
@@ -125,21 +125,21 @@ export function LoginView() {
 
         {role === "mahasiswa" ? (
           <div className="mt-5 space-y-4">
-            <Field id={`${uid}-nim`} label="NIM" required hint="Masukkan NIM yang digunakan saat mendaftar.">
+            <Field id={`${uid}-username`} label="Username" required hint="Masukkan username yang digunakan saat mendaftar.">
               <input
-                id={`${uid}-nim`}
+                id={`${uid}-username`}
                 type="text"
-                value={nim}
-                autoCapitalize="characters"
-                autoComplete="username"
+                value={username}
+                autoCapitalize="none"
+                autoComplete="off"
                 spellCheck={false}
-                placeholder="NIM mahasiswa"
-                onChange={(e) => { setNim(e.target.value.toUpperCase().replace(/\s/g, "")); if (error) setError(""); }}
-                aria-describedby={describedBy(`${uid}-nim`, undefined, "hint")}
-                className={cn(inputClass(false), "h-11 uppercase")}
+                placeholder="Username"
+                onChange={(e) => { setUsername(e.target.value.toLowerCase().replace(/\s+/g, "")); if (error) setError(""); }}
+                aria-describedby={describedBy(`${uid}-username`, undefined, "hint")}
+                className={cn(inputClass(false), "h-11 lowercase")}
               />
             </Field>
-            <Field id={`${uid}-password`} label="Kata sandi" required>
+            <Field id={`${uid}-password`} label="Kata sandi" required hint="Masukkan kata sandi akun Anda.">
               <input
                 id={`${uid}-password`}
                 type="password"

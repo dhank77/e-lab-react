@@ -19,6 +19,7 @@ export const NAV: Record<Role, NavItem[]> = {
   mahasiswa: [
     { href: "/mahasiswa/katalog", label: "Katalog Alat", shortLabel: "Katalog", icon: "grid" },
     { href: "/mahasiswa/pengajuan", label: "Pengajuan Saya", shortLabel: "Pengajuan", icon: "clipboard" },
+    { href: "/mahasiswa/riwayat", label: "Riwayat Aktivitas", shortLabel: "Riwayat", icon: "history" },
   ],
 };
 

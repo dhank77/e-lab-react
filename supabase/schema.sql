@@ -33,22 +33,27 @@ $$;
 -- ---------- PROFILES ----------
 create table if not exists public.profiles (
   id uuid primary key references auth.users(id) on delete cascade,
-  name text not null,
-  nim text, -- mahasiswa only; normalized uppercase
+  name text,
+  nim text,
+  username text,
   role public.user_role not null default 'mahasiswa',
   created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now(),
-  constraint profiles_role_nim_chk
-    check (
-      (role = 'mahasiswa' and nim is not null and char_length(btrim(nim)) > 0) or
-      (role = 'petugas' and nim is null)
-    )
+  updated_at timestamptz not null default now()
 );
 
--- Case-insensitive/normalized uniqueness for NIM
+-- Case-insensitive/normalized uniqueness for username
+alter table public.profiles add column if not exists username text;
+alter table public.profiles drop constraint if exists profiles_role_nim_chk;
+alter table public.profiles drop constraint if exists profiles_role_username_chk;
+alter table public.profiles add constraint profiles_role_username_chk
+  check (
+    (role = 'mahasiswa' and username is not null and char_length(btrim(username)) > 0) or
+    (role = 'petugas' and username is null)
+  );
 drop index if exists public.profiles_nim_unique_idx;
-create unique index profiles_nim_unique_idx
-  on public.profiles (upper(btrim(nim))) where nim is not null;
+drop index if exists public.profiles_username_unique_idx;
+create unique index profiles_username_unique_idx
+  on public.profiles (lower(btrim(username))) where username is not null;
 
 -- Tidak lagi membatasi hanya satu petugas; beberapa akun petugas diperbolehkan.
 create or replace function public.guard_petugas_profile()
@@ -91,20 +96,20 @@ set search_path = public
 as $$
 declare
   v_name text;
-  v_nim text;
+  v_username text;
 begin
   v_name := nullif(btrim(coalesce(new.raw_user_meta_data ->> 'name', '')), '');
-  v_nim := nullif(upper(btrim(coalesce(new.raw_user_meta_data ->> 'nim', ''))), '');
+  v_username := nullif(lower(btrim(coalesce(new.raw_user_meta_data ->> 'username', ''))), '');
 
   -- Petugas is created by an administrator and linked by the seed/repair script.
   if lower(coalesce(new.email, '')) = any (array['hherawatii083@gmail.com', 'admin123@elab.local']) then
     return new;
   end if;
-  if v_name is null or v_nim is null then
-    raise exception 'Nama dan NIM wajib diisi saat pendaftaran mahasiswa.';
+  if v_username is null then
+    raise exception 'Username wajib diisi saat pendaftaran mahasiswa.';
   end if;
-  insert into public.profiles (id, name, nim, role)
-  values (new.id, v_name, v_nim, 'mahasiswa')
+  insert into public.profiles (id, name, nim, username, role)
+  values (new.id, v_name, null, v_username, 'mahasiswa')
   on conflict (id) do nothing;
 
   return new;
@@ -255,7 +260,7 @@ to authenticated
 with check (
   id = auth.uid()
   and role = 'mahasiswa'
-  and nim is not null
+  and username is not null
 );
 
 drop policy if exists "profiles_update_self_no_role_escalation" on public.profiles;
@@ -299,6 +304,50 @@ create policy "inventory_petugas_delete"
 on public.inventory_items for delete
 to authenticated
 using (public.is_petugas());
+
+-- ---------- ACCOUNT DELETION ----------
+-- Mahasiswa dapat menghapus profil sendiri. borrow_requests (on delete restrict)
+-- dihapus terlebih dahulu melalui fungsi delete_student_account sebelum profil dihapus.
+drop policy if exists "profiles_delete_self" on public.profiles;
+create policy "profiles_delete_self"
+on public.profiles for delete
+to authenticated
+using (id = auth.uid());
+
+-- Fungsi untuk menghapus akun mahasiswa (security definer agar dapat
+-- menghapus borrow_requests dan profil milik sendiri tanpa gangguan RLS).
+-- Hapus auth.user dilakukan melalui service role di sisi server (API route).
+create or replace function public.delete_student_account()
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_role text;
+begin
+  select p.role into v_role
+  from public.profiles p
+  where p.id = auth.uid();
+
+  if v_role <> 'mahasiswa' then
+    return jsonb_build_object('ok', false, 'error', 'Hanya mahasiswa yang dapat menghapus akun.');
+  end if;
+
+  -- Hapus semua pengajuan milik mahasiswa ini terlebih dahulu (karena FK on delete restrict).
+  delete from public.borrow_requests
+  where student_id = auth.uid();
+
+  -- Hapus profil.
+  delete from public.profiles
+  where id = auth.uid();
+
+  return jsonb_build_object('ok', true);
+end;
+$$;
+
+revoke all on function public.delete_student_account() from public;
+grant execute on function public.delete_student_account() to authenticated;
 
 -- borrow_requests
 drop policy if exists "borrow_student_select_own" on public.borrow_requests;

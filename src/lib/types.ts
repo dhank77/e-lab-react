@@ -5,7 +5,7 @@ export type Session = {
   name: string;
   userId: string; // profiles/auth user id (uuid)
   /** Diisi untuk mahasiswa yang masuk dengan akun terdaftar. */
-  nim?: string;
+  username?: string;
 };
 
 /** @deprecated Akun mahasiswa kini dikelola Supabase Auth; jangan simpan password/hash di profil/localStorage. */
